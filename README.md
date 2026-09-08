@@ -24,8 +24,8 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 - Gradle Kotlin DSL
 - JDK 17
 - Android Gradle Plugin 9.4.0
-- compileSdk 37 / targetSdk 36 / minSdk 28
-- Jetpack Compose
+- compileSdk 36 / targetSdk 36 / minSdk 28
+- Jetpack Compose (BOM 2026.06.00)
 - AndroidX Car App 1.7.0
 
 ## Local development
