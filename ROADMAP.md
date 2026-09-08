@@ -177,9 +177,26 @@ Validate the highest-risk assumption before product development: can our native 
 - [x] Repository-controlled Gradle 9.5.0 Wrapper
 - [x] Wrapper distribution checksum pinning
 - [x] Wrapper-based CI green on final Phase 0 toolchain
-- [ ] Desktop Head Unit (DHU) manual validation
+- [x] Phone shell manual launch validation
+- [x] Desktop Head Unit (DHU) discovery/render/input validation
+- [ ] Disconnect/reconnect validation
 - [ ] Physical Android Auto vehicle validation
 - [ ] Record device/Android Auto version compatibility result
+
+### Manual validation record — 2026-09-08
+
+Confirmed on a physical Android phone connected to Google's Desktop Head Unit emulator:
+
+- AutoHub APK installed successfully on the phone.
+- Compose phone shell launched successfully.
+- Android Auto developer mode and head-unit server were enabled.
+- DHU connected to Android Auto successfully.
+- AutoHub appeared in the Android Auto launcher.
+- Opening AutoHub created the car session and rendered the Phase 0 screen.
+- Pressing `Test input` incremented the car-side counter.
+- Pressing `Refresh car action count` on the phone displayed the same counter value.
+
+This validates the Phase 0 phone → Android Auto host → `CarAppService` → shared in-process state path. Phone model, Android version and Android Auto version still need to be recorded for the compatibility matrix.
 
 ### Temporary category note
 
@@ -189,14 +206,16 @@ The spike declares the `POI` Car App Library category strictly to validate the s
 
 Phase 0 is complete only when all of the following are true:
 
-1. Debug APK builds in wrapper-based CI.
-2. Phone shell launches on a physical Android device.
-3. AutoHub appears in Android Auto/DHU.
-4. Opening AutoHub creates a car session without host errors.
-5. Phase 0 screen renders.
-6. Pressing `Test input` increments the counter on the car screen.
-7. Reopening/refreshing the phone shell can observe the same in-process counter during the active process.
-8. Disconnect/reconnect does not crash the app.
+1. [x] Debug APK builds in wrapper-based CI.
+2. [x] Phone shell launches on a physical Android device.
+3. [x] AutoHub appears in Android Auto/DHU.
+4. [x] Opening AutoHub creates a car session without host errors.
+5. [x] Phase 0 screen renders.
+6. [x] Pressing `Test input` increments the counter on the car screen.
+7. [x] Reopening/refreshing the phone shell can observe the same in-process counter during the active process.
+8. [ ] Disconnect/reconnect does not crash the app.
+9. [ ] Physical vehicle Android Auto validation succeeds.
+10. [ ] Compatibility details are recorded.
 
 ## 8. Phase 1 — Media Foundation
 
@@ -424,14 +443,11 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Pull the latest Phase 0 branch locally.
-2. Verify `gradlew.bat --version` reports Gradle 9.5.0 under JDK 17.
-3. Open/sync the repository in Android Studio Quail 3.
-4. Install/run the debug APK on the test phone.
-5. Configure Android Auto developer mode + Desktop Head Unit for supported development testing.
-6. Validate the Phase 0 screen and input counter.
-7. Record DHU and physical vehicle compatibility results in this document.
-8. Only after Phase 0 exit criteria pass, start Phase 1 Media Foundation.
+1. Validate DHU disconnect/reconnect recovery.
+2. Record phone model, Android version and Android Auto version used for DHU validation.
+3. Validate AutoHub on a physical Android Auto vehicle/head unit.
+4. Record wired/wireless connection type and vehicle/head-unit details.
+5. Only after Phase 0 exit criteria pass, mark PR #1 ready, merge it, and start Phase 1 Media Foundation.
 
 ## 21. Research References
 
