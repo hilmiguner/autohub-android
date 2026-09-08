@@ -1,20 +1,21 @@
 name: Bootstrap Gradle Wrapper
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/phase-0-technical-spike
+      - main
 
 permissions:
   contents: write
 
 jobs:
   wrapper:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Checkout branch
+      - name: Checkout Phase 0 branch
         uses: actions/checkout@v4
         with:
           ref: feat/phase-0-technical-spike
