@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_autohub"
@@ -27,10 +30,23 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".media.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            android:icon="@drawable/ic_autohub"
+            android:label="@string/app_name"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
         <!--
-            Phase 0 uses the supported POI template category only to validate the
-            CarAppService/Session/Screen lifecycle in DHU. This is not the final
-            product category and must not be shipped as a POI product.
+            The Phase 0 POI template entry is retained during Phase 1 so the
+            validated host lifecycle path remains available for regression tests.
+            It is not the final product category and must not ship as a POI product.
         -->
         <service
             android:name=".car.AutoHubCarAppService"
