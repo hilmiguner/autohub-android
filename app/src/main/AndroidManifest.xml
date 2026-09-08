@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_autohub"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_autohub"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AutoHub">
+
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Phase 0 uses the supported POI template category only to validate the
+            CarAppService/Session/Screen lifecycle in DHU. This is not the final
+            product category and must not be shipped as a POI product.
+        -->
+        <service
+            android:name=".car.AutoHubCarAppService"
+            android:exported="true"
+            android:icon="@drawable/ic_autohub"
+            android:label="@string/app_name"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>
