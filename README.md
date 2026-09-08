@@ -21,10 +21,12 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 
 ## Development stack
 
-- Kotlin (AGP 9 built-in Kotlin support)
+- Android Studio Quail 3 / 2026.1.3 recommended for local development
+- Kotlin with AGP 9 built-in Kotlin support
 - Gradle Kotlin DSL
 - JDK 17
-- Android Gradle Plugin 9.4.0
+- Android Gradle Plugin 9.3.2
+- Gradle 9.5.0 through the checked-in Gradle Wrapper
 - compileSdk 36 / targetSdk 36 / minSdk 28
 - Jetpack Compose (BOM 2026.02.01)
 - AndroidX Core KTX 1.17.0
@@ -34,14 +36,22 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 
 ## Local development
 
-1. Clone the repository.
-2. Open the repository root in a current Android Studio version compatible with AGP 9.4.
-3. Let Android Studio install/sync the required Android SDK components.
-4. Run the `app` configuration on an Android phone/emulator.
-5. For Phase 0 Android Auto validation, use Google's supported Android Auto developer/DHU workflow and verify the `AutoHub · Phase 0` screen.
-6. Press `Test input` on the car screen and verify that its counter increments.
+1. Clone the repository and switch to the active feature branch when developing an open PR.
+2. Verify the repository-controlled Gradle toolchain on Windows:
 
-CI uploads the Phase 0 debug APK as the `autohub-phase0-debug` workflow artifact after a successful build.
+   ```powershell
+   .\gradlew.bat --version
+   ```
+
+   Phase 0 expects Gradle 9.5.0.
+3. Open the repository root in Android Studio Quail 3 (2026.1.3) or a compatible newer version.
+4. Configure the project Gradle JDK as JDK 17.
+5. Let Android Studio install/sync the required Android SDK components.
+6. Run the `app` configuration on an Android phone/emulator.
+7. For Phase 0 Android Auto validation, use Google's supported Android Auto developer/DHU workflow and verify the `AutoHub · Phase 0` screen.
+8. Press `Test input` on the car screen and verify that its counter increments.
+
+The Gradle Wrapper is committed to the repository so local development and CI use the same Gradle version. CI also verifies the wrapper JAR checksum before building and uploads the Phase 0 debug APK as the `autohub-phase0-debug` workflow artifact after a successful build.
 
 ## Branch policy
 
