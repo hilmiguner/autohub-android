@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoHub</string>
+    <string name="phase_zero_title">Phase 0 Technical Spike</string>
+    <string name="phase_zero_body">Phone shell is running. Connect Android Auto/DHU and open AutoHub to validate the car host lifecycle.</string>
+</resources>
