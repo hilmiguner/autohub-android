@@ -20,12 +20,14 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 
 ## Development stack
 
-- Kotlin
+- Kotlin (AGP 9 built-in Kotlin support)
 - Gradle Kotlin DSL
 - JDK 17
 - Android Gradle Plugin 9.4.0
 - compileSdk 36 / targetSdk 36 / minSdk 28
-- Jetpack Compose (BOM 2026.06.00)
+- Jetpack Compose (BOM 2026.02.01)
+- AndroidX Core KTX 1.17.0
+- AndroidX Activity Compose 1.12.4
 - AndroidX Car App 1.7.0
 
 ## Local development
