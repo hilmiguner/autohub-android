@@ -49,14 +49,17 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 7. **Clean-room implementation** — Fermata is used as an architectural research reference only. AutoHub source code must be independently implemented. Fermata GPL source is not to be copied into proprietary AutoHub modules.
 8. **No premature root/Xposed dependency** — the base product must not require privileged device modifications.
 9. **Test the risky assumption first** — car host/render/input feasibility is validated before building subscription or content catalog systems.
+10. **Reproducible toolchain** — Gradle is pinned through the repository wrapper so local development and CI use the same Gradle runtime.
 
 ## 4. Current Technical Stack
 
 | Area | Choice |
 | --- | --- |
+| Recommended IDE | Android Studio Quail 3 / 2026.1.3 |
 | Language | Kotlin (AGP 9 built-in Kotlin support) |
 | Build | Gradle Kotlin DSL |
-| Android Gradle Plugin | 9.4.0 |
+| Android Gradle Plugin | 9.3.2 |
+| Gradle | 9.5.0 via checked-in Wrapper |
 | JDK | 17 |
 | compileSdk | 36 |
 | targetSdk | 36 |
@@ -65,14 +68,14 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 | Compose BOM | 2026.02.01 |
 | AndroidX Core KTX | 1.17.0 |
 | AndroidX Activity Compose | 1.12.4 |
-| Car integration | AndroidX Car App 1.7.0 |
+| Car integration | AndroidX Car App 1.7.0 + app-projected 1.7.0 |
 | Playback | Media3 (planned Phase 1) |
 | Browser | Android WebView (planned) |
 | Local persistence | DataStore + Room (planned) |
 | Dependency injection | Hilt (planned when module count justifies it) |
 | CI | GitHub Actions |
 
-Phase 0 intentionally stays on the stable API 36-compatible Compose/AndroidX line. Compose 1.12+ requires compileSdk 37, so upgrading to that line is deferred until API 37 is part of the stable project baseline.
+Phase 0 intentionally stays on the stable API 36-compatible Compose/AndroidX line. The AGP 9.3.2 + Gradle 9.5.0 + JDK 17 baseline is selected to remain compatible with Android Studio Quail 3 while keeping the build on the AGP 9 toolchain.
 
 ## 5. Target Module Architecture
 
@@ -171,7 +174,9 @@ Validate the highest-risk assumption before product development: can our native 
 - [x] In-process spike state shared by phone/car entry points
 - [x] Unit test for the spike state
 - [x] GitHub Actions build/test workflow
-- [ ] CI green on Phase 0 branch
+- [x] Repository-controlled Gradle 9.5.0 Wrapper
+- [x] Wrapper distribution checksum pinning
+- [ ] Wrapper-based CI green on final Phase 0 toolchain
 - [ ] Desktop Head Unit (DHU) manual validation
 - [ ] Physical Android Auto vehicle validation
 - [ ] Record device/Android Auto version compatibility result
@@ -184,7 +189,7 @@ The spike declares the `POI` Car App Library category strictly to validate the s
 
 Phase 0 is complete only when all of the following are true:
 
-1. Debug APK builds in CI.
+1. Debug APK builds in wrapper-based CI.
 2. Phone shell launches on a physical Android device.
 3. AutoHub appears in Android Auto/DHU.
 4. Opening AutoHub creates a car session without host errors.
@@ -380,10 +385,14 @@ push / pull request
       │
       ├── JDK 17
       ├── Android SDK 36
-      ├── Gradle 9.6
+      ├── verify Gradle wrapper JAR checksum
+      ├── Gradle Wrapper 9.5.0
       ├── unit tests
-      └── debug APK assemble
+      ├── debug APK assemble
+      └── upload debug APK artifact
 ```
+
+The build must use `./gradlew` / `gradlew.bat`; CI must not select a different Gradle version independently from the repository.
 
 Later additions:
 
@@ -391,7 +400,6 @@ Later additions:
 - Detekt/Ktlint
 - dependency vulnerability scanning
 - release signing on protected tags
-- build artifact retention
 - automated versioning/release notes
 
 ## 19. Git Workflow
@@ -416,14 +424,15 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Get Phase 0 CI green.
-2. Fix any AGP/Kotlin/Car App API compilation differences revealed by CI.
-3. Clone the repository locally and open it in Android Studio.
-4. Install/run the debug APK on the test phone.
-5. Configure Android Auto developer mode + Desktop Head Unit for supported development testing.
-6. Validate the Phase 0 screen and input counter.
-7. Record results in this document.
-8. Only after Phase 0 exit criteria pass, start Phase 1 Media Foundation.
+1. Confirm the final AGP 9.3.2 / Gradle Wrapper 9.5.0 CI run is green.
+2. Pull the latest Phase 0 branch locally.
+3. Verify `gradlew.bat --version` reports Gradle 9.5.0 under JDK 17.
+4. Open/sync the repository in Android Studio Quail 3.
+5. Install/run the debug APK on the test phone.
+6. Configure Android Auto developer mode + Desktop Head Unit for supported development testing.
+7. Validate the Phase 0 screen and input counter.
+8. Record DHU and physical vehicle compatibility results in this document.
+9. Only after Phase 0 exit criteria pass, start Phase 1 Media Foundation.
 
 ## 21. Research References
 
