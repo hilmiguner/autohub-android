@@ -32,10 +32,12 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36"
 
-      - name: Set up Gradle
+      # Temporary bootstrap path. This step is removed once the checked-in
+      # Gradle 9.5 wrapper has been generated on this branch.
+      - name: Set up Gradle 9.5
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.6.0"
+          gradle-version: "9.5.0"
 
       - name: Unit tests
         run: gradle --no-daemon :app:testDebugUnitTest
