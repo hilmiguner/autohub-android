@@ -1,0 +1,62 @@
+name: Bootstrap Gradle Wrapper
+
+on:
+  push:
+    branches:
+      - feat/phase-0-technical-spike
+
+permissions:
+  contents: write
+
+jobs:
+  wrapper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/phase-0-technical-spike
+          fetch-depth: 0
+
+      - name: Check wrapper
+        id: wrapper
+        shell: bash
+        run: |
+          if [[ -f gradle/wrapper/gradle-wrapper.jar ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 17
+        if: steps.wrapper.outputs.exists == 'false'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 9.5
+        if: steps.wrapper.outputs.exists == 'false'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.5.0"
+
+      - name: Generate official Gradle wrapper
+        if: steps.wrapper.outputs.exists == 'false'
+        shell: bash
+        run: |
+          gradle wrapper --gradle-version 9.5.0 --distribution-type bin --no-daemon
+          printf '\ndistributionSha256Sum=553c78f50dafcd54d65b9a444649057857469edf836431389695608536d6b746\n' >> gradle/wrapper/gradle-wrapper.properties
+          chmod +x gradlew
+
+      - name: Commit wrapper
+        if: steps.wrapper.outputs.exists == 'false'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradlew gradlew.bat gradle/wrapper/gradle-wrapper.jar gradle/wrapper/gradle-wrapper.properties
+          git commit -m "build: add Gradle 9.5 wrapper"
+          git push origin HEAD:feat/phase-0-technical-spike
