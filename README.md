@@ -11,6 +11,7 @@ The first milestone intentionally focuses on the highest-risk technical path bef
 - Android/Kotlin application skeleton
 - Jetpack Compose phone shell
 - AndroidX Car App `CarAppService`
+- Android Auto projected runtime artifact
 - car `Session` and `Screen` lifecycle
 - interactive car input callback
 - shared in-process spike state
@@ -29,6 +30,7 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 - AndroidX Core KTX 1.17.0
 - AndroidX Activity Compose 1.12.4
 - AndroidX Car App 1.7.0
+- AndroidX Car App Projected 1.7.0
 
 ## Local development
 
@@ -38,6 +40,8 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 4. Run the `app` configuration on an Android phone/emulator.
 5. For Phase 0 Android Auto validation, use Google's supported Android Auto developer/DHU workflow and verify the `AutoHub · Phase 0` screen.
 6. Press `Test input` on the car screen and verify that its counter increments.
+
+CI uploads the Phase 0 debug APK as the `autohub-phase0-debug` workflow artifact after a successful build.
 
 ## Branch policy
 
