@@ -176,7 +176,7 @@ Validate the highest-risk assumption before product development: can our native 
 - [x] GitHub Actions build/test workflow
 - [x] Repository-controlled Gradle 9.5.0 Wrapper
 - [x] Wrapper distribution checksum pinning
-- [ ] Wrapper-based CI green on final Phase 0 toolchain
+- [x] Wrapper-based CI green on final Phase 0 toolchain
 - [ ] Desktop Head Unit (DHU) manual validation
 - [ ] Physical Android Auto vehicle validation
 - [ ] Record device/Android Auto version compatibility result
@@ -424,15 +424,14 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Confirm the final AGP 9.3.2 / Gradle Wrapper 9.5.0 CI run is green.
-2. Pull the latest Phase 0 branch locally.
-3. Verify `gradlew.bat --version` reports Gradle 9.5.0 under JDK 17.
-4. Open/sync the repository in Android Studio Quail 3.
-5. Install/run the debug APK on the test phone.
-6. Configure Android Auto developer mode + Desktop Head Unit for supported development testing.
-7. Validate the Phase 0 screen and input counter.
-8. Record DHU and physical vehicle compatibility results in this document.
-9. Only after Phase 0 exit criteria pass, start Phase 1 Media Foundation.
+1. Pull the latest Phase 0 branch locally.
+2. Verify `gradlew.bat --version` reports Gradle 9.5.0 under JDK 17.
+3. Open/sync the repository in Android Studio Quail 3.
+4. Install/run the debug APK on the test phone.
+5. Configure Android Auto developer mode + Desktop Head Unit for supported development testing.
+6. Validate the Phase 0 screen and input counter.
+7. Record DHU and physical vehicle compatibility results in this document.
+8. Only after Phase 0 exit criteria pass, start Phase 1 Media Foundation.
 
 ## 21. Research References
 
