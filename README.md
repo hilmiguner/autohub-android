@@ -4,18 +4,20 @@ AutoHub is a native Android / Android Auto project for a modular in-car media ex
 
 ## Current status
 
-**Phase 0 — Android Auto Technical Spike**
+**Phase 1 — Media Foundation**
 
-The first milestone intentionally focuses on the highest-risk technical path before product features are built:
+Phase 0 validated the Android Auto host lifecycle on a physical Android phone and Desktop Head Unit (DHU). Phase 1 now builds the reusable audio playback path that future content providers will share:
 
-- Android/Kotlin application skeleton
-- Jetpack Compose phone shell
-- AndroidX Car App `CarAppService`
-- Android Auto projected runtime artifact
-- car `Session` and `Screen` lifecycle
-- interactive car input callback
-- shared in-process spike state
+- Media3 ExoPlayer 1.11.0
+- `MediaLibraryService` + `MediaLibrarySession`
+- foreground media-playback service declaration
+- Android Auto media capability declaration
+- deterministic bundled/offline test tone
+- phone-side `MediaController` test controls
+- provider-independent queue domain model
 - unit tests and CI debug build
+
+The Phase 0 POI template path remains temporarily available for regression testing. Physical vehicle compatibility validation is deferred until a suitable test environment is available.
 
 See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical decisions and exit criteria.
 
@@ -33,6 +35,7 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 - AndroidX Activity Compose 1.12.4
 - AndroidX Car App 1.7.0
 - AndroidX Car App Projected 1.7.0
+- AndroidX Media3 ExoPlayer / Session 1.11.0
 
 ## Local development
 
@@ -43,15 +46,15 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
    .\gradlew.bat --version
    ```
 
-   Phase 0 expects Gradle 9.5.0.
+   The project expects Gradle 9.5.0.
 3. Open the repository root in Android Studio Quail 3 (2026.1.3) or a compatible newer version.
 4. Configure the project Gradle JDK as JDK 17.
 5. Let Android Studio install/sync the required Android SDK components.
 6. Run the `app` configuration on an Android phone/emulator.
-7. For Phase 0 Android Auto validation, use Google's supported Android Auto developer/DHU workflow and verify the `AutoHub · Phase 0` screen.
-8. Press `Test input` on the car screen and verify that its counter increments.
+7. On the Phase 1 phone screen, verify the media session connects and use `Play test tone`, `Pause`, and `Restart` to exercise the service-owned player.
+8. For Android Auto media validation, use Google's supported Android Auto developer/DHU workflow. AutoHub now declares both media support and the temporary Phase 0 template capability.
 
-The Gradle Wrapper is committed to the repository so local development and CI use the same Gradle version. CI also verifies the wrapper JAR checksum before building and uploads the Phase 0 debug APK as the `autohub-phase0-debug` workflow artifact after a successful build.
+The Gradle Wrapper is committed to the repository so local development and CI use the same Gradle version. CI also verifies the wrapper JAR checksum before building and uploads the debug APK workflow artifact after a successful build.
 
 ## Branch policy
 
