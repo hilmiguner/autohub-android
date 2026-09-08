@@ -32,18 +32,20 @@ jobs:
       - name: Install Android SDK 36
         run: sdkmanager "platforms;android-36"
 
-      # Temporary bootstrap path. This step is removed once the checked-in
-      # Gradle 9.5 wrapper has been generated on this branch.
-      - name: Set up Gradle 9.5
+      - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.5.0"
+
+      - name: Verify Gradle wrapper JAR
+        run: echo "497c8c2a7e5031f6aa847f88104aa80a93532ec32ee17bdb8d1d2f67a194a9c7  gradle/wrapper/gradle-wrapper.jar" | sha256sum --check
+
+      - name: Verify toolchain
+        run: ./gradlew --version
 
       - name: Unit tests
-        run: gradle --no-daemon :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Assemble debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: ./gradlew --no-daemon :app:assembleDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
