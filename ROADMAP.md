@@ -54,21 +54,25 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 
 | Area | Choice |
 | --- | --- |
-| Language | Kotlin |
+| Language | Kotlin (AGP 9 built-in Kotlin support) |
 | Build | Gradle Kotlin DSL |
 | Android Gradle Plugin | 9.4.0 |
 | JDK | 17 |
-| compileSdk | 37 |
+| compileSdk | 36 |
 | targetSdk | 36 |
 | minSdk | 28 |
 | Phone UI | Jetpack Compose |
-| Compose BOM | 2026.08.00 |
+| Compose BOM | 2026.02.01 |
+| AndroidX Core KTX | 1.17.0 |
+| AndroidX Activity Compose | 1.12.4 |
 | Car integration | AndroidX Car App 1.7.0 |
 | Playback | Media3 (planned Phase 1) |
 | Browser | Android WebView (planned) |
 | Local persistence | DataStore + Room (planned) |
 | Dependency injection | Hilt (planned when module count justifies it) |
 | CI | GitHub Actions |
+
+Phase 0 intentionally stays on the stable API 36-compatible Compose/AndroidX line. Compose 1.12+ requires compileSdk 37, so upgrading to that line is deferred until API 37 is part of the stable project baseline.
 
 ## 5. Target Module Architecture
 
@@ -375,7 +379,7 @@ Current CI:
 push / pull request
       │
       ├── JDK 17
-      ├── Android SDK
+      ├── Android SDK 36
       ├── Gradle 9.6
       ├── unit tests
       └── debug APK assemble
