@@ -59,7 +59,7 @@ class BrowserActivity : ComponentActivity() {
         addressField = EditText(this).apply {
             setSingleLine(true)
             hint = "Address"
-            setText(DEFAULT_HOME_URL)
+            setText(savedInstanceState?.getString(KEY_ADDRESS) ?: DEFAULT_HOME_URL)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             imeOptions = EditorInfo.IME_ACTION_GO
             setOnEditorActionListener { _, actionId, _ ->
@@ -216,7 +216,17 @@ class BrowserActivity : ComponentActivity() {
             },
         )
 
-        webView.loadUrl(DEFAULT_HOME_URL)
+        val restored = savedInstanceState
+            ?.getBundle(KEY_WEBVIEW_STATE)
+            ?.let { webView.restoreState(it) != null }
+            ?: false
+
+        if (restored) {
+            statusText.text = "Ready"
+            syncNavigationState(webView)
+        } else {
+            webView.loadUrl(DEFAULT_HOME_URL)
+        }
     }
 
     private fun loadAddressField() {
@@ -239,6 +249,14 @@ class BrowserActivity : ComponentActivity() {
         reloadButton.isEnabled = activeView.url?.isNotBlank() == true
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        val webViewState = Bundle()
+        webView.saveState(webViewState)
+        outState.putBundle(KEY_WEBVIEW_STATE, webViewState)
+        outState.putString(KEY_ADDRESS, addressField.text.toString())
+        super.onSaveInstanceState(outState)
+    }
+
     override fun onDestroy() {
         webView.stopLoading()
         webView.webChromeClient = null
@@ -255,6 +273,11 @@ class BrowserActivity : ComponentActivity() {
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val KEY_WEBVIEW_STATE = "browser.webview_state"
+        private const val KEY_ADDRESS = "browser.address"
+    }
 }
 
 private const val DEFAULT_HOME_URL = "https://example.com"
