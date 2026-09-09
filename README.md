@@ -6,35 +6,22 @@ AutoHub is a native Android / Android Auto project for a modular in-car media ex
 
 **Phase 2 — Browser Foundation**
 
-Phase 0 validated Android Auto host discovery/lifecycle behavior. Phase 1 completed the reusable Media3 playback foundation, including Android Auto browsing/playback, audio focus, queue controls and process-restored playback state. Phase 2 now builds the phone-side browser module independently from the car adapter.
+Phase 0 validated Android Auto host discovery, templated rendering, input callbacks and reconnect behavior. Phase 1 completed the reusable Media3 playback foundation used by the phone, Android system media controls and Android Auto media browsing. Phase 2 now builds a phone-only WebView browser foundation while keeping Android Auto on the validated media-only path.
 
-Current validated/completed media foundation includes:
-
-- Media3 ExoPlayer + `MediaLibraryService`
-- service-owned `MediaLibrarySession`
-- Android Auto media-source discovery
-- deterministic 10-second generated test media
-- phone `MediaController` controls
-- foreground playback notification/system controls
-- shared phone/DHU queue and playback state
-- explicit media audio attributes and ExoPlayer-managed audio focus
-- Previous / Next / Seek queue controls
-- persistent queue/current-item/position restore
-
-Current Phase 2 browser slice includes:
+Current Phase 2 scope includes:
 
 - dedicated phone-only `BrowserActivity`
-- Compose + Android WebView shell
-- address bar with HTTPS normalization
-- Back / Forward / Reload navigation
-- Android Back integration with WebView history
-- HTTP(S)-only navigation policy with unit tests
-- Safe Browsing and mixed-content blocking
+- native Android View browser chrome + platform WebView
+- address entry with HTTPS normalization
+- Back / Forward / Reload controls
+- Android system Back integration with WebView history
+- HTTP(S)-only navigation policy
+- JavaScript + DOM storage baseline without a JavaScript bridge
 - file/content access disabled
-- JavaScript + DOM storage enabled without a JavaScript bridge
-- first-party cookies enabled and third-party cookies disabled by default
-
-The browser is not exposed as an Android Auto capability. Android Auto remains on the validated media-only path.
+- mixed-content blocking and Safe Browsing
+- first-party cookies enabled with third-party cookies disabled
+- configuration-driven WebView current-page/history restoration
+- Phase 1 media regression coverage
 
 See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical decisions and validation status.
 
@@ -53,7 +40,7 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 - AndroidX Car App 1.7.0
 - AndroidX Car App Projected 1.7.0
 - AndroidX Media3 1.11.0
-- Android WebView
+- Android WebView for the phone browser
 
 ## Local development
 
@@ -69,18 +56,18 @@ See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical 
 4. Configure the project Gradle JDK as JDK 17.
 5. Let Android Studio install/sync the required Android SDK components.
 6. Run the `app` configuration on an Android phone/emulator.
-7. Open **Open phone browser** from the AutoHub phone shell to validate the current Phase 2 browser slice.
-8. For Android Auto regression validation, use Google's supported Android Auto developer/DHU workflow and confirm the existing media source still behaves normally.
+7. For Android Auto validation, use Google's supported Android Auto developer/DHU workflow.
+8. In the current build, Android Auto remains a media source; the browser is phone-only.
 
 The Gradle Wrapper is committed to the repository so local development and CI use the same Gradle version. CI also verifies the wrapper JAR checksum before building and uploads the debug APK as the `autohub-debug` workflow artifact after a successful build.
 
-## Audio focus
+## Media foundation
 
-The media player explicitly declares `USAGE_MEDIA` / music content and lets ExoPlayer manage audio focus. `handleAudioBecomingNoisy` is also enabled so playback can pause safely when an output route such as a headset or Bluetooth device disappears.
+The Phase 1 player explicitly declares `USAGE_MEDIA` / music content and lets ExoPlayer manage audio focus. `handleAudioBecomingNoisy` is enabled so playback can pause safely when an output route such as a headset or Bluetooth device disappears. Queue/current-item/position state is persisted and restored paused after process recreation.
 
-## Browser boundary
+## Browser foundation
 
-The Phase 2 browser is a normal phone Android feature. It does not add a browser/template capability to Android Auto. Provider-specific bridges and any future car exposure must be evaluated independently against supported platform capabilities before integration.
+The browser uses a classic Android View hierarchy around WebView because the initial Compose + `AndroidView(WebView)` shell rendered as a blank white activity on the physical Samsung test phone. Browser navigation is restricted to HTTP(S), and the current page/history is saved and restored across configuration-driven Activity recreation such as orientation changes. Full process-death browser restoration remains a later Phase 2 slice.
 
 ## Branch policy
 
