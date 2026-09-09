@@ -64,7 +64,7 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 | compileSdk | 36 |
 | targetSdk | 36 |
 | minSdk | 28 |
-| Phone UI | Jetpack Compose |
+| Phone UI | Jetpack Compose + classic Android Views where platform WebView integration benefits from them |
 | Compose BOM | 2026.02.01 |
 | AndroidX Core KTX | 1.17.0 |
 | AndroidX Activity Compose | 1.12.4 |
@@ -290,7 +290,7 @@ Goal: create a robust phone-side browser module that is independent of the car a
 ### Current implementation
 
 - [x] dedicated phone-only `BrowserActivity`
-- [x] Compose + platform WebView lifecycle wrapper
+- [x] native Android View hierarchy + platform WebView lifecycle wrapper
 - [x] address bar and host-like input normalization to HTTPS
 - [x] Back / Forward / Reload navigation controls
 - [x] Android system Back integrated with WebView history
@@ -301,24 +301,34 @@ Goal: create a robust phone-side browser module that is independent of the car a
 - [x] mixed-content blocked and Safe Browsing enabled
 - [x] first-party cookies allowed; third-party cookies disabled by default
 - [x] browser remains excluded from Android Auto capabilities
+- [ ] WebView current page/history restoration across configuration-driven Activity recreation — implementation added, physical rotation retest pending
 - [ ] cookie/session persistence policy
-- [ ] browser state restoration across activity/process recreation
+- [ ] browser state restoration after full process death
 - [ ] downloads policy
 - [ ] desktop/mobile user-agent modes
 - [ ] full-screen media callbacks
 - [ ] safe JavaScript bridge design for later provider integrations
 
-The browser remains a normal Android phone feature and is only to be exposed to a car target when that target/mode officially supports the required UI. The production Android Auto path remains media-only.
+### Physical phone validation record — 2026-09-09
 
-### Phase 2 first-slice validation pending
+| Item | Result |
+| --- | --- |
+| Browser activity opens | Pass |
+| Native browser chrome renders | Pass |
+| Default `https://example.com` renders | Pass |
+| HTTPS normalization | Pass |
+| Back / Forward / Reload | Pass |
+| Android Back uses WebView history first | Pass |
+| `file://` blocked | Pass |
+| `javascript:` blocked | Pass |
+| Phase 1 media regression | Pass |
+| Landscape rotation retains current page/history | Pending retest after state-restoration fix |
 
-- physical phone launch from AutoHub shell
-- default HTTPS page load
-- address navigation and HTTPS normalization
-- Back / Forward / Reload behavior
-- Android Back history behavior
-- non-HTTP(S) navigation blocking
-- Phase 1 media regression smoke test
+The first browser shell used Compose + `AndroidView(WebView)` and rendered as a blank white activity on the Samsung test phone. The browser chrome was moved to a classic Android View hierarchy so controls remain independent of WebView page rendering. A second physical-device test confirmed the chrome and default page render correctly.
+
+A subsequent landscape-rotation test exposed that `BrowserActivity` was recreated and always loaded the default page. The activity now saves WebView state into the instance-state bundle and restores it after configuration-driven recreation instead of unconditionally loading `https://example.com`. This fix is pending physical rotation retest.
+
+The browser should remain a normal Android feature and only be exposed to a car target when that target/mode officially supports the required UI.
 
 ## 10. Phase 3 — TV / Stream Client
 
@@ -382,7 +392,7 @@ Expected production-safe features include:
 - voice/search integrations where supported
 - account status/error resolution screens
 
-The Phase 0 POI declaration is no longer active and must not return in the production media build unless a supported product category requires it.
+The Phase 0 POI declaration is no longer active in Phase 1 and must not return in the production media build unless a supported product category requires it.
 
 ## 14. Phase 7 — Android Automotive OS
 
@@ -435,7 +445,6 @@ Required for:
 - parsers
 - domain state
 - playback state machine
-- browser navigation/policy logic
 - entitlement decisions
 - coordinate/state transformations
 
@@ -512,12 +521,11 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Validate the Phase 2 browser shell on a physical phone and keep the Phase 1 media regression path green.
-2. Add explicit cookie/session persistence behavior.
-3. Add browser state restoration across activity/process recreation.
-4. Add desktop/mobile user-agent modes and download handling policy.
-5. Add full-screen media lifecycle handling.
-6. Run deferred physical vehicle compatibility validation when an environment becomes available.
+1. Retest browser current-page/history restoration across orientation changes.
+2. Define cookie/session persistence policy.
+3. Add full browser process-restoration behavior.
+4. Add desktop/mobile user-agent modes and downloads policy.
+5. Run deferred physical vehicle compatibility validation when an environment becomes available.
 
 ## 21. Research References
 
