@@ -301,7 +301,7 @@ Goal: create a robust phone-side browser module that is independent of the car a
 - [x] mixed-content blocked and Safe Browsing enabled
 - [x] first-party cookies allowed; third-party cookies disabled by default
 - [x] browser remains excluded from Android Auto capabilities
-- [x] WebView current page/history restoration across configuration-driven Activity recreation
+- [ ] WebView current page/history restoration across configuration-driven Activity recreation — implementation added, physical rotation retest pending
 - [ ] cookie/session persistence policy
 - [ ] browser state restoration after full process death
 - [ ] downloads policy
@@ -322,12 +322,11 @@ Goal: create a robust phone-side browser module that is independent of the car a
 | `file://` blocked | Pass |
 | `javascript:` blocked | Pass |
 | Phase 1 media regression | Pass |
-| Landscape rotation retains current page/history | Pass |
-| Portrait rotation retains current page/history | Pass |
+| Landscape rotation retains current page/history | Pending retest after state-restoration fix |
 
 The first browser shell used Compose + `AndroidView(WebView)` and rendered as a blank white activity on the Samsung test phone. The browser chrome was moved to a classic Android View hierarchy so controls remain independent of WebView page rendering. A second physical-device test confirmed the chrome and default page render correctly.
 
-A subsequent landscape-rotation test exposed that `BrowserActivity` was recreated and always loaded the default page. The activity now saves WebView state into the instance-state bundle and restores it after configuration-driven recreation instead of unconditionally loading `https://example.com`. Landscape and portrait rotation retests both passed on the physical phone.
+A subsequent landscape-rotation test exposed that `BrowserActivity` was recreated and always loaded the default page. The activity now saves WebView state into the instance-state bundle and restores it after configuration-driven recreation instead of unconditionally loading `https://example.com`. This fix is pending physical rotation retest.
 
 The browser should remain a normal Android feature and only be exposed to a car target when that target/mode officially supports the required UI.
 
@@ -400,77 +399,146 @@ The Phase 0 POI declaration is no longer active in Phase 1 and must not return i
 Planned work:
 
 - dedicated AAOS module/app target
-- parked-app browser/video evaluation where the OS supports it
-- rotary/controller UX
-- automotive resources
-- AAOS distribution model
+- parked-app capability detection
+- video UI for supported parked modes
+- browser UI for supported parked modes
+- driving-state transitions
+- AAOS-specific testing matrix
 
-## 15. Phase 8 — Commercialization
+## 15. Phase 8 — Compatibility Research Track
 
-### Client
+This track is deliberately isolated from the main product architecture.
 
-- release signing
-- product flavors/environments
-- analytics
+Research topics may include:
+
+- Android Auto host/version behavior
+- rendering surface lifecycle
+- input coordinate mapping
+- device/manufacturer compatibility
+- install/distribution behavior
+- reconnect/session recovery
+- deferred physical vehicle/head-unit validation from Phase 0
+
+Research code must not contaminate shared media/content modules. Any technique that depends on unsupported host behavior should remain an experiment until its reliability, policy implications and maintenance cost are understood.
+
+## 16. Phase 9 — Commercial Hardening
+
+- backend production deployment
+- subscription billing integration
+- device limits
+- entitlement revocation
 - crash reporting
-- privacy controls
-- subscription/paywall UI
-- support diagnostics export
-- update policy
+- analytics with privacy controls
+- APK signing/release pipeline
+- update mechanism/distribution strategy
+- support diagnostics bundle
+- privacy policy and terms
+- security review
+- license compliance review
 
-### Backend
+## 17. Testing Strategy
 
-- subscription plans
-- license/device limits
-- payment-provider webhooks
-- admin panel
-- remote feature flags
-- compatibility matrix
-- release channels
-- audit log
+### Unit tests
 
-## 16. Testing Strategy
+Required for:
 
-### Unit
+- parsers
+- domain state
+- playback state machine
+- entitlement decisions
+- coordinate/state transformations
 
-- browser navigation/state logic
-- playlist parsing
-- EPG parsing
-- playback queue
-- entitlement rules
+### Android instrumentation tests
 
-### Integration
+Required for:
 
-- Media3 session
 - persistence
-- provider adapters
-- backend auth
+- WebView lifecycle-critical paths
+- activity/service integration where practical
 
-### Device / host matrix
+### Car tests
 
-- phone Android versions
-- Android Auto DHU
-- physical Android Auto head units
-- Android Automotive emulator/vehicle later
+Three levels:
 
-### Release gate
+1. host-independent unit tests
+2. Desktop Head Unit manual tests
+3. physical vehicle tests
 
-A commercial release should not ship until:
+Compatibility reports should record:
 
-1. critical flows have automated tests,
-2. supported devices are in the compatibility matrix,
-3. provider/legal assumptions are documented,
-4. subscription/backend failure modes are tested,
-5. rollback/version-block mechanisms exist.
+- phone model
+- Android version
+- Android Auto version
+- wired/wireless connection
+- vehicle/head unit model
+- observed result
 
-## 17. Current Delivery Sequence
+## 18. CI/CD Plan
 
-1. ~~Phase 0 — Android Auto Technical Spike~~ ✅
-2. ~~Phase 1 — Media Foundation~~ ✅
-3. **Phase 2 — Browser Foundation** ← current
-4. Phase 3 — TV / Stream Client
-5. Phase 4 — Web Media Provider Integration
-6. Phase 5 — Account / licensing backend
-7. Phase 6 — Production Android Auto UX
-8. Phase 7 — Android Automotive OS
-9. Phase 8 — Commercialization
+Current CI:
+
+```text
+push / pull request
+      │
+      ├── JDK 17
+      ├── Android SDK 36
+      ├── verify Gradle wrapper JAR checksum
+      ├── Gradle Wrapper 9.5.0
+      ├── unit tests
+      ├── debug APK assemble
+      └── upload debug APK artifact
+```
+
+The build must use `./gradlew` / `gradlew.bat`; CI must not select a different Gradle version independently from the repository.
+
+Later additions:
+
+- Android lint
+- Detekt/Ktlint
+- dependency vulnerability scanning
+- release signing on protected tags
+- automated versioning/release notes
+
+## 19. Git Workflow
+
+Use short-lived feature branches:
+
+```text
+main
+ └── feat/phase-X-description
+       └── draft PR
+            ├── CI
+            ├── review
+            └── squash merge
+```
+
+Rules:
+
+- `main` should remain buildable.
+- Development work should happen in PR branches.
+- One roadmap slice per PR where practical.
+- Architecture changes must update this document.
+
+## 20. Immediate Next Steps
+
+1. Retest browser current-page/history restoration across orientation changes.
+2. Define cookie/session persistence policy.
+3. Add full browser process-restoration behavior.
+4. Add desktop/mobile user-agent modes and downloads policy.
+5. Run deferred physical vehicle compatibility validation when an environment becomes available.
+
+## 21. Research References
+
+Primary references used for the initial architecture:
+
+- Android for Cars App Library documentation
+- Android Auto media app documentation
+- AndroidX Car App release/API documentation
+- Android Media3 documentation
+- Android WebView documentation
+- Android MediaProjection/VirtualDisplay documentation for architectural research
+- Fermata open-source project as an external architectural research reference only
+
+---
+
+Last updated: 2026-09-09
