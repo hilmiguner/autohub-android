@@ -237,8 +237,8 @@ Goal: build the reusable playback layer before adding product content providers.
 - [x] Android system media notification validation
 - [x] Android Auto DHU media discovery/browse/play/pause validation
 - [x] DHU disconnect/reconnect recovery validation
-- [ ] explicit audio-focus routing validation after `USAGE_MEDIA` + ExoPlayer-managed focus fix
-- [ ] competing-media audio focus behavior validation
+- [x] explicit audio-focus routing validation after `USAGE_MEDIA` + ExoPlayer-managed focus fix
+- [x] competing-media audio focus behavior validation
 - [ ] seek/next/previous queue integration
 - [ ] persistent playback state
 
@@ -254,9 +254,10 @@ Goal: build the reusable playback layer before adding product content providers.
 | Disconnect / reconnect discovery | Pass |
 | Disconnect / reconnect playback | Pass |
 | Crash during reconnect | None |
-| First-session audible output before another media app | **Issue observed; fix pending retest** |
+| Fresh-session audible output without priming another app | Pass |
+| Spotify ↔ AutoHub audio-focus handoff | Pass |
 
-Observed audio-routing issue: on a fresh DHU session, the test tone could enter playing state without audible output until another media app (Spotify) first activated the audio path. The player is now configured with explicit `USAGE_MEDIA`, `AUDIO_CONTENT_TYPE_MUSIC`, ExoPlayer-managed audio focus, and `handleAudioBecomingNoisy=true`. This must be retested before the audio-focus item is closed.
+The first DHU build exposed an audio-routing issue where AutoHub could enter playing state without audible output until another media app activated the audio path. The service now configures explicit `USAGE_MEDIA`, `AUDIO_CONTENT_TYPE_MUSIC`, ExoPlayer-managed audio focus, and `handleAudioBecomingNoisy=true`. Fresh-DHU playback and competing-media handoff were both retested successfully on 2026-09-09.
 
 ### Architecture decision
 
@@ -477,12 +478,10 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Retest fresh-DHU audible output with explicit ExoPlayer audio-focus configuration.
-2. Validate focus handoff against Spotify or another competing media app.
-3. Add seek/next/previous queue integration.
-4. Add persistent playback state.
-5. Complete Phase 1 exit criteria and merge PR #2.
-6. Run deferred physical vehicle compatibility validation when an environment becomes available.
+1. Add seek/next/previous queue integration.
+2. Add persistent playback state.
+3. Complete Phase 1 exit criteria and merge PR #2.
+4. Run deferred physical vehicle compatibility validation when an environment becomes available.
 
 ## 21. Research References
 
