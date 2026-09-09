@@ -1,10 +1,8 @@
 package com.autohub.android.media
 
 import android.content.Context
-import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.autohub.android.R
 
 /**
  * Small deterministic catalog used to validate the Phase 1 playback pipeline.
@@ -24,9 +22,7 @@ class DemoMediaCatalog(context: Context) {
         )
         .build()
 
-    private val testToneUri = Uri.parse(
-        "android.resource://${context.packageName}/${R.raw.autohub_test_tone}",
-    )
+    private val testToneUri = TestToneFile.getOrCreate(context)
 
     val playableItems: List<MediaItem> = listOf(
         buildTestItem(TEST_TONE_1_ID, "AutoHub Test Tone 1"),

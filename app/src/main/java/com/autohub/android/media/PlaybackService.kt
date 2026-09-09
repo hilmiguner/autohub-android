@@ -1,8 +1,11 @@
 package com.autohub.android.media
 
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
@@ -22,7 +25,28 @@ import com.google.common.util.concurrent.ListenableFuture
  */
 class PlaybackService : MediaLibraryService() {
     private lateinit var catalog: DemoMediaCatalog
+    private lateinit var player: ExoPlayer
+    private lateinit var playbackStateStore: PlaybackStateStore
     private var mediaLibrarySession: MediaLibrarySession? = null
+
+    private val persistenceHandler by lazy { Handler(Looper.getMainLooper()) }
+
+    private val persistenceTicker = object : Runnable {
+        override fun run() {
+            if (!::player.isInitialized) return
+            persistPlaybackSnapshot()
+            if (player.isPlaying) {
+                persistenceHandler.postDelayed(this, PERSISTENCE_INTERVAL_MS)
+            }
+        }
+    }
+
+    private val persistenceListener = object : Player.Listener {
+        override fun onEvents(player: Player, events: Player.Events) {
+            persistPlaybackSnapshot()
+            scheduleProgressPersistence()
+        }
+    }
 
     private val libraryCallback = object : MediaLibrarySession.Callback {
         override fun onGetLibraryRoot(
@@ -130,17 +154,20 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         catalog = DemoMediaCatalog(this)
+        playbackStateStore = PlaybackStateStore(this)
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
 
-        val player = ExoPlayer.Builder(this)
+        player = ExoPlayer.Builder(this)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
 
+        restorePersistedState()
+        player.addListener(persistenceListener)
         mediaLibrarySession = MediaLibrarySession.Builder(this, player, libraryCallback).build()
     }
 
@@ -149,11 +176,72 @@ class PlaybackService : MediaLibraryService() {
     ): MediaLibrarySession? = mediaLibrarySession
 
     override fun onDestroy() {
-        mediaLibrarySession?.run {
-            player.release()
-            release()
+        persistenceHandler.removeCallbacks(persistenceTicker)
+        if (::player.isInitialized) {
+            persistPlaybackSnapshot()
+            player.removeListener(persistenceListener)
         }
+        mediaLibrarySession?.release()
         mediaLibrarySession = null
+        if (::player.isInitialized) {
+            player.release()
+        }
         super.onDestroy()
+    }
+
+    private fun restorePersistedState() {
+        val snapshot = playbackStateStore.load() ?: return
+        val resolvedItems = snapshot.mediaIds.mapNotNull { mediaId ->
+            catalog.getItem(mediaId)?.takeIf { it.mediaMetadata.isPlayable == true }
+        }
+
+        if (resolvedItems.isEmpty() || resolvedItems.size != snapshot.mediaIds.size) {
+            playbackStateStore.clear()
+            return
+        }
+
+        val restoredIndex = snapshot.currentIndex.coerceIn(resolvedItems.indices)
+        player.setMediaItems(resolvedItems, restoredIndex, snapshot.positionMs)
+        player.prepare()
+
+        // Restore context without surprising the user with automatic audio on startup.
+        player.pause()
+    }
+
+    private fun persistPlaybackSnapshot() {
+        if (!::player.isInitialized || !::playbackStateStore.isInitialized) return
+
+        val mediaItemCount = player.mediaItemCount
+        if (mediaItemCount == 0) {
+            playbackStateStore.clear()
+            return
+        }
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex !in 0 until mediaItemCount) return
+
+        val mediaIds = (0 until mediaItemCount).map { index ->
+            player.getMediaItemAt(index).mediaId
+        }
+
+        playbackStateStore.save(
+            PlaybackSnapshot(
+                mediaIds = mediaIds,
+                currentIndex = currentIndex,
+                positionMs = player.currentPosition.coerceAtLeast(0L),
+                wasPlaying = player.isPlaying,
+            ),
+        )
+    }
+
+    private fun scheduleProgressPersistence() {
+        persistenceHandler.removeCallbacks(persistenceTicker)
+        if (player.isPlaying) {
+            persistenceHandler.postDelayed(persistenceTicker, PERSISTENCE_INTERVAL_MS)
+        }
+    }
+
+    companion object {
+        private const val PERSISTENCE_INTERVAL_MS = 1_000L
     }
 }
