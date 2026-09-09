@@ -67,7 +67,7 @@ The Phase 1 player explicitly declares `USAGE_MEDIA` / music content and lets Ex
 
 ## Browser foundation
 
-The browser uses a classic Android View hierarchy around WebView because the initial Compose + `AndroidView(WebView)` shell rendered as a blank white activity on the physical Samsung test phone. Browser navigation is restricted to HTTP(S). The browser saves WebView current-page/history state inside the Activity instance-state bundle and restores it after configuration-driven recreation such as orientation changes; this specific behavior is pending physical-device retest. Full process-death browser restoration remains a later Phase 2 slice.
+The browser uses a classic Android View hierarchy around WebView because the initial Compose + `AndroidView(WebView)` shell rendered as a blank white activity on the physical Samsung test phone. Browser navigation is restricted to HTTP(S). The browser saves WebView current-page/history state inside the Activity instance-state bundle and restores it after configuration-driven recreation such as orientation changes; this behavior is pending physical-device retest. Full process-death browser restoration remains a later Phase 2 slice.
 
 ## Branch policy
 
