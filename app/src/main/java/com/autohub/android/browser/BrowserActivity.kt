@@ -3,6 +3,7 @@ package com.autohub.android.browser
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -59,7 +60,7 @@ class BrowserActivity : ComponentActivity() {
             setSingleLine(true)
             hint = "Address"
             setText(DEFAULT_HOME_URL)
-            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             imeOptions = EditorInfo.IME_ACTION_GO
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_GO) {
