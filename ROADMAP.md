@@ -1,6 +1,6 @@
 # AutoHub Android — Roadmap, Technical Architecture and Delivery Plan
 
-> Status: Phase 1 — Media Foundation in progress; physical vehicle compatibility validation remains deferred until a suitable test environment is available
+> Status: Phase 1 — Media Foundation
 >
 > This document is the source of truth for the Android application's technical direction. It will be updated as architectural decisions are validated or changed.
 
@@ -30,7 +30,7 @@ The phone application is the full-featured client. It can host normal Android UI
 
 ### Android Auto
 
-The supported production path uses AndroidX Car App Library and Android media APIs. Phase 0 validated discovery, host connection, lifecycle and input callbacks. Phase 1 adds the standard media-browser/session path Android Auto can use for driver-safe audio browsing and playback controls.
+The supported production path uses AndroidX Car App Library and Android media APIs. Phase 0 validated discovery, host connection, lifecycle and input callbacks. Phase 1 validates the standard Android Auto media-browser path using Media3.
 
 Android Auto-specific experimental work must remain isolated from product/business logic so compatibility changes do not force a rewrite of the entire application.
 
@@ -50,7 +50,6 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 8. **No premature root/Xposed dependency** — the base product must not require privileged device modifications.
 9. **Test the risky assumption first** — car host/render/input feasibility is validated before building subscription or content catalog systems.
 10. **Reproducible toolchain** — Gradle is pinned through the repository wrapper so local development and CI use the same Gradle runtime.
-11. **Service-owned playback** — the player/session lifecycle must not depend on the phone Activity so playback can survive UI lifecycle changes and be controlled by system/car clients.
 
 ## 4. Current Technical Stack
 
@@ -70,19 +69,17 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 | AndroidX Core KTX | 1.17.0 |
 | AndroidX Activity Compose | 1.12.4 |
 | Car integration | AndroidX Car App 1.7.0 + app-projected 1.7.0 |
-| Playback | AndroidX Media3 1.11.0 — ExoPlayer + MediaLibraryService/MediaLibrarySession |
+| Playback | Media3 1.11.0 |
 | Browser | Android WebView (planned) |
 | Local persistence | DataStore + Room (planned) |
 | Dependency injection | Hilt (planned when module count justifies it) |
 | CI | GitHub Actions |
 
-The project remains on the stable API 36-compatible Compose/AndroidX baseline while Media3 is versioned independently. The AGP 9.3.2 + Gradle 9.5.0 + JDK 17 baseline remains selected for Android Studio Quail 3 compatibility.
+The AGP 9.3.2 + Gradle 9.5.0 + JDK 17 baseline is selected to remain compatible with Android Studio Quail 3 while keeping the build on the AGP 9 toolchain.
 
 ## 5. Target Module Architecture
 
-The project still uses one `:app` module while the media boundaries are being proven. Package boundaries mirror the future module boundaries so extraction can happen without redesigning the domain.
-
-Target shape:
+Phase 0 intentionally started as one `:app` module. The intended longer-term shape remains:
 
 ```text
 AutoHub
@@ -138,8 +135,6 @@ AutoHub
 ```
 
 ## 6. Runtime Model
-
-The intended high-level flow is:
 
 ```text
 Content Provider
@@ -205,7 +200,7 @@ The physical vehicle test is retained as a compatibility validation task and sho
 
 ### Temporary category note
 
-The spike declares the `POI` Car App Library category strictly to validate the standard templated-app host lifecycle with a simple `PaneTemplate`. It remains temporarily available during Phase 1 as a regression path. It is **not** the intended product category and must be removed before production release.
+The Phase 0 spike used the `POI` Car App Library category strictly to validate the standard templated-app host lifecycle with a simple `PaneTemplate`. Phase 1 no longer declares that templated service in the manifest; Android Auto discovery is media-only for the current build.
 
 ### Exit criteria
 
@@ -231,23 +226,43 @@ Goal: build the reusable playback layer before adding product content providers.
 - [x] `MediaLibraryService` + `MediaLibrarySession`
 - [x] foreground media-playback permissions/service declaration
 - [x] legacy/platform media browser compatibility intent
-- [x] Android Auto `media` capability declaration
+- [x] Android Auto media-only capability declaration
 - [x] deterministic bundled offline test tone
 - [x] phone-side `MediaController` connection
 - [x] phone play / pause / restart test controls
 - [x] provider-independent immutable queue model
 - [x] unit tests for queue navigation semantics
-- [ ] CI green for the first Phase 1 slice
-- [ ] physical-phone playback/manual lifecycle validation
-- [ ] Android Auto DHU media discovery/browse/playback validation
-- [ ] audio focus behavior validation
-- [ ] system playback notification validation
+- [x] CI green for the first Phase 1 slice
+- [x] physical-phone playback/manual lifecycle validation
+- [x] Android system media notification validation
+- [x] Android Auto DHU media discovery/browse/play/pause validation
+- [x] DHU disconnect/reconnect recovery validation
+- [ ] explicit audio-focus routing validation after `USAGE_MEDIA` + ExoPlayer-managed focus fix
+- [ ] competing-media audio focus behavior validation
 - [ ] seek/next/previous queue integration
 - [ ] persistent playback state
+
+### DHU validation record — 2026-09-09
+
+| Item | Result |
+| --- | --- |
+| AutoHub discovered as media source | Pass |
+| `AutoHub Test Tone` visible | Pass |
+| Test tone starts from DHU | Pass |
+| Play / pause controls | Pass |
+| Phone / DHU playback state sync | Pass |
+| Disconnect / reconnect discovery | Pass |
+| Disconnect / reconnect playback | Pass |
+| Crash during reconnect | None |
+| First-session audible output before another media app | **Issue observed; fix pending retest** |
+
+Observed audio-routing issue: on a fresh DHU session, the test tone could enter playing state without audible output until another media app (Spotify) first activated the audio path. The player is now configured with explicit `USAGE_MEDIA`, `AUDIO_CONTENT_TYPE_MUSIC`, ExoPlayer-managed audio focus, and `handleAudioBecomingNoisy=true`. This must be retested before the audio-focus item is closed.
 
 ### Architecture decision
 
 Phase 1 uses `MediaLibraryService` instead of a plain `MediaSessionService`. AutoHub needs a browsable content tree for Android Auto, and `MediaLibraryService` extends the session model while exposing that library through the standard media-browser interfaces. Content-provider-specific code remains outside the service; the current `DemoMediaCatalog` exists only to validate the infrastructure.
+
+ExoPlayer owns audio-focus behavior. The service configures media audio attributes and enables ExoPlayer's automatic focus handling rather than maintaining a second manual `AudioManager` focus implementation.
 
 ### Exit criterion
 
@@ -333,7 +348,7 @@ Expected production-safe features include:
 - voice/search integrations where supported
 - account status/error resolution screens
 
-The Phase 0 POI declaration must be removed before production release.
+The Phase 0 POI declaration is no longer active in Phase 1 and must not return in the production media build unless a supported product category requires it.
 
 ## 14. Phase 7 — Android Automotive OS
 
@@ -385,7 +400,7 @@ Required for:
 
 - parsers
 - domain state
-- playback/queue state machine
+- playback state machine
 - entitlement decisions
 - coordinate/state transformations
 
@@ -462,28 +477,25 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Get the first Phase 1 Media3 slice green in CI.
-2. Pull the Phase 1 branch to the physical test phone and verify service connection + bundled tone playback.
-3. Verify pause/restart behavior and Activity recreation while the service owns the player.
-4. Open Android Auto DHU and confirm AutoHub is discoverable as a media source.
-5. Browse the demo media root and play the test tone from the DHU media UI.
-6. Validate system media notification and audio-focus behavior.
-7. Integrate seek/next/previous with the shared queue model.
-8. Add persistent playback state after transient playback semantics are stable.
-9. Run deferred physical vehicle compatibility validation when an environment becomes available.
+1. Retest fresh-DHU audible output with explicit ExoPlayer audio-focus configuration.
+2. Validate focus handoff against Spotify or another competing media app.
+3. Add seek/next/previous queue integration.
+4. Add persistent playback state.
+5. Complete Phase 1 exit criteria and merge PR #2.
+6. Run deferred physical vehicle compatibility validation when an environment becomes available.
 
 ## 21. Research References
 
-Primary references used for the architecture:
+Primary references used for the initial architecture:
 
-- Android for Cars media app documentation
-- Android Auto media support / manifest documentation
+- Android for Cars App Library documentation
+- Android Auto media app documentation
 - AndroidX Car App release/API documentation
-- AndroidX Media3 / ExoPlayer / MediaLibraryService documentation
+- Android Media3 documentation
 - Android WebView documentation
 - Android MediaProjection/VirtualDisplay documentation for architectural research
 - Fermata open-source project as an external architectural research reference only
 
 ---
 
-Last updated: 2026-09-08
+Last updated: 2026-09-09
