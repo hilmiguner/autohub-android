@@ -132,12 +132,12 @@ class MainActivity : ComponentActivity() {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Phase 1 · Queue Controls",
+                            text = "Phase 1 · Playback Persistence",
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Media3 now exposes a deterministic three-item queue to the phone and Android Auto through the same MediaLibrarySession.",
+                            text = "Queue, current item and playback position are persisted by the service and restored paused after process recreation.",
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -186,7 +186,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                         ) {
-                            Text("Play test queue")
+                            Text(if (queueSize > 0) "Resume saved queue" else "Play test queue")
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
