@@ -10,6 +10,7 @@ import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -26,10 +27,20 @@ class BrowserActivity : ComponentActivity() {
     private lateinit var forwardButton: Button
     private lateinit var reloadButton: Button
     private lateinit var statusText: TextView
+    private lateinit var cookieManager: CookieManager
+    private lateinit var browserStateStore: BrowserStateStore
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        browserStateStore = SharedPreferencesBrowserStateStore(this)
+        cookieManager = CookieManager.getInstance()
+        val persistedState = if (savedInstanceState == null) {
+            browserStateStore.load()
+        } else {
+            null
+        }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -59,7 +70,11 @@ class BrowserActivity : ComponentActivity() {
         addressField = EditText(this).apply {
             setSingleLine(true)
             hint = "Address"
-            setText(savedInstanceState?.getString(KEY_ADDRESS) ?: DEFAULT_HOME_URL)
+            setText(
+                savedInstanceState?.getString(KEY_ADDRESS)
+                    ?: persistedState?.currentUrl
+                    ?: DEFAULT_HOME_URL,
+            )
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             imeOptions = EditorInfo.IME_ACTION_GO
             setOnEditorActionListener { _, actionId, _ ->
@@ -141,6 +156,18 @@ class BrowserActivity : ComponentActivity() {
             ),
         )
 
+        val clearBrowserDataButton = Button(this).apply {
+            text = "Clear browser data"
+            setOnClickListener { clearBrowserData() }
+        }
+        root.addView(
+            clearBrowserDataButton,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -151,8 +178,8 @@ class BrowserActivity : ComponentActivity() {
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.safeBrowsingEnabled = true
 
-            CookieManager.getInstance().setAcceptCookie(true)
-            CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+            cookieManager.setAcceptCookie(true)
+            cookieManager.setAcceptThirdPartyCookies(this, false)
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
@@ -169,7 +196,11 @@ class BrowserActivity : ComponentActivity() {
                     return !allowed
                 }
 
-                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                override fun onPageStarted(
+                    view: WebView?,
+                    url: String?,
+                    favicon: android.graphics.Bitmap?,
+                ) {
                     super.onPageStarted(view, url, favicon)
                     statusText.text = "Loading…"
                     syncNavigationState(view)
@@ -179,6 +210,8 @@ class BrowserActivity : ComponentActivity() {
                     super.onPageFinished(view, url)
                     statusText.text = "Ready"
                     syncNavigationState(view)
+                    persistCurrentPage(url)
+                    cookieManager.flush()
                 }
 
                 override fun doUpdateVisitedHistory(
@@ -216,16 +249,23 @@ class BrowserActivity : ComponentActivity() {
             },
         )
 
-        val restored = savedInstanceState
+        val restoredConfigurationState = savedInstanceState
             ?.getBundle(KEY_WEBVIEW_STATE)
             ?.let { webView.restoreState(it) != null }
             ?: false
 
-        if (restored) {
-            statusText.text = "Ready"
-            syncNavigationState(webView)
-        } else {
-            webView.loadUrl(DEFAULT_HOME_URL)
+        when {
+            restoredConfigurationState -> {
+                statusText.text = "Ready"
+                syncNavigationState(webView)
+            }
+
+            persistedState != null -> {
+                statusText.text = "Restoring last page…"
+                webView.loadUrl(persistedState.currentUrl)
+            }
+
+            else -> webView.loadUrl(DEFAULT_HOME_URL)
         }
     }
 
@@ -249,12 +289,38 @@ class BrowserActivity : ComponentActivity() {
         reloadButton.isEnabled = activeView.url?.isNotBlank() == true
     }
 
+    private fun persistCurrentPage(url: String?) {
+        BrowserPersistencePolicy
+            .sanitizePersistedUrl(url)
+            ?.let(browserStateStore::saveCurrentUrl)
+    }
+
+    private fun clearBrowserData() {
+        browserStateStore.clear()
+        WebStorage.getInstance().deleteAllData()
+        webView.stopLoading()
+        webView.clearHistory()
+        webView.clearCache(true)
+        cookieManager.removeAllCookies {
+            cookieManager.flush()
+            addressField.setText(DEFAULT_HOME_URL)
+            statusText.text = "Browser data cleared."
+            webView.loadUrl(DEFAULT_HOME_URL)
+        }
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         val webViewState = Bundle()
         webView.saveState(webViewState)
         outState.putBundle(KEY_WEBVIEW_STATE, webViewState)
         outState.putString(KEY_ADDRESS, addressField.text.toString())
         super.onSaveInstanceState(outState)
+    }
+
+    override fun onStop() {
+        persistCurrentPage(webView.url)
+        cookieManager.flush()
+        super.onStop()
     }
 
     override fun onDestroy() {
