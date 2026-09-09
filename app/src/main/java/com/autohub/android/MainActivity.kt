@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,12 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.autohub.android.media.DemoMediaCatalog
 import com.autohub.android.media.PlaybackService
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +49,32 @@ class MainActivity : ComponentActivity() {
                     var playbackStatus by remember { mutableStateOf("Connecting to playback service…") }
                     var isPlaying by remember { mutableStateOf(false) }
                     var currentTitle by remember { mutableStateOf("None") }
+                    var currentIndex by remember { mutableStateOf(0) }
+                    var queueSize by remember { mutableStateOf(0) }
+                    var hasPrevious by remember { mutableStateOf(false) }
+                    var hasNext by remember { mutableStateOf(false) }
+                    var positionMs by remember { mutableStateOf(0L) }
+                    var durationMs by remember { mutableStateOf(0L) }
+
+                    fun updateUi(player: Player) {
+                        isPlaying = player.isPlaying
+                        currentTitle = player.currentMediaItem
+                            ?.mediaMetadata
+                            ?.title
+                            ?.toString()
+                            ?: "None"
+                        queueSize = player.mediaItemCount
+                        currentIndex = if (player.mediaItemCount > 0) {
+                            player.currentMediaItemIndex + 1
+                        } else {
+                            0
+                        }
+                        hasPrevious = player.hasPreviousMediaItem()
+                        hasNext = player.hasNextMediaItem()
+                        positionMs = player.currentPosition.coerceAtLeast(0L)
+                        durationMs = player.duration.validDurationOrZero()
+                        playbackStatus = playbackStateLabel(player.playbackState, player.isPlaying)
+                    }
 
                     DisposableEffect(context) {
                         val token = SessionToken(
@@ -53,16 +82,6 @@ class MainActivity : ComponentActivity() {
                             ComponentName(context, PlaybackService::class.java),
                         )
                         val controllerFuture = MediaController.Builder(context, token).buildAsync()
-
-                        fun updateUi(player: Player) {
-                            isPlaying = player.isPlaying
-                            currentTitle = player.currentMediaItem
-                                ?.mediaMetadata
-                                ?.title
-                                ?.toString()
-                                ?: "None"
-                            playbackStatus = playbackStateLabel(player.playbackState, player.isPlaying)
-                        }
 
                         val playerListener = object : Player.Listener {
                             override fun onEvents(player: Player, events: Player.Events) {
@@ -91,6 +110,16 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    LaunchedEffect(controller) {
+                        while (true) {
+                            controller?.let { mediaController ->
+                                positionMs = mediaController.currentPosition.coerceAtLeast(0L)
+                                durationMs = mediaController.duration.validDurationOrZero()
+                            }
+                            delay(250)
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -103,12 +132,12 @@ class MainActivity : ComponentActivity() {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Phase 1 · Media Foundation",
+                            text = "Phase 1 · Queue Controls",
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Media3 ExoPlayer and MediaLibraryService now own playback outside the Activity lifecycle.",
+                            text = "Media3 now exposes a deterministic three-item queue to the phone and Android Auto through the same MediaLibrarySession.",
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -123,6 +152,16 @@ class MainActivity : ComponentActivity() {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
+                            text = "Queue: $currentIndex / $queueSize",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Position: ${formatPosition(positionMs)} / ${formatPosition(durationMs)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
                             text = if (isPlaying) "Playback: Playing" else "Playback: Not playing",
                             style = MaterialTheme.typography.bodyLarge,
                         )
@@ -133,61 +172,100 @@ class MainActivity : ComponentActivity() {
                             onClick = {
                                 controller?.let { mediaController ->
                                     if (mediaController.mediaItemCount == 0) {
-                                        mediaController.setMediaItem(
-                                            MediaItem.Builder()
-                                                .setMediaId(DemoMediaCatalog.TEST_TONE_ID)
-                                                .build(),
-                                        )
+                                        val queue = DemoMediaCatalog.TEST_QUEUE_IDS.map { mediaId ->
+                                            MediaItem.Builder().setMediaId(mediaId).build()
+                                        }
+                                        mediaController.setMediaItems(queue, 0, 0L)
                                         mediaController.prepare()
                                     } else if (mediaController.playbackState == Player.STATE_IDLE) {
                                         mediaController.prepare()
+                                    } else if (mediaController.playbackState == Player.STATE_ENDED) {
+                                        mediaController.seekToDefaultPosition(0)
                                     }
                                     mediaController.play()
                                 }
                             },
                         ) {
-                            Text("Play test tone")
+                            Text("Play test queue")
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
                                 modifier = Modifier.weight(1f),
-                                enabled = controller != null,
-                                onClick = { controller?.pause() },
+                                enabled = controller != null && hasPrevious,
+                                onClick = { controller?.seekToPreviousMediaItem() },
                             ) {
-                                Text("Pause")
+                                Text("Previous")
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedButton(
                                 modifier = Modifier.weight(1f),
-                                enabled = controller != null,
+                                enabled = controller != null && hasNext,
+                                onClick = { controller?.seekToNextMediaItem() },
+                            ) {
+                                Text("Next")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                enabled = controller != null && queueSize > 0,
                                 onClick = {
                                     controller?.let { mediaController ->
-                                        if (mediaController.mediaItemCount == 0) {
-                                            mediaController.setMediaItem(
-                                                MediaItem.Builder()
-                                                    .setMediaId(DemoMediaCatalog.TEST_TONE_ID)
-                                                    .build(),
-                                            )
-                                        }
-                                        mediaController.seekTo(0)
-                                        mediaController.prepare()
-                                        mediaController.play()
+                                        mediaController.seekTo(
+                                            (mediaController.currentPosition - SEEK_STEP_MS)
+                                                .coerceAtLeast(0L),
+                                        )
                                     }
                                 },
                             ) {
-                                Text("Restart")
+                                Text("Seek -0.5s")
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                enabled = controller != null && queueSize > 0,
+                                onClick = {
+                                    controller?.let { mediaController ->
+                                        val duration = mediaController.duration.validDurationOrZero()
+                                        val requested = mediaController.currentPosition + SEEK_STEP_MS
+                                        val target = if (duration > 0L) {
+                                            requested.coerceAtMost(duration)
+                                        } else {
+                                            requested
+                                        }
+                                        mediaController.seekTo(target)
+                                    }
+                                },
+                            ) {
+                                Text("Seek +0.5s")
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "The bundled test tone is intentionally short and offline so playback tests do not depend on a network source.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = controller != null && queueSize > 0,
+                            onClick = {
+                                controller?.let { mediaController ->
+                                    if (mediaController.isPlaying) {
+                                        mediaController.pause()
+                                    } else {
+                                        mediaController.play()
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(if (isPlaying) "Pause" else "Resume")
+                        }
                     }
                 }
             }
         }
+    }
+
+    companion object {
+        private const val SEEK_STEP_MS = 500L
     }
 }
 
@@ -197,4 +275,14 @@ private fun playbackStateLabel(playbackState: Int, isPlaying: Boolean): String =
     playbackState == Player.STATE_READY -> "Ready"
     playbackState == Player.STATE_ENDED -> "Ended"
     else -> "Idle"
+}
+
+private fun Long.validDurationOrZero(): Long =
+    if (this == C.TIME_UNSET || this <= 0L) 0L else this
+
+private fun formatPosition(positionMs: Long): String {
+    val safeMs = positionMs.coerceAtLeast(0L)
+    val seconds = safeMs / 1_000L
+    val tenths = (safeMs % 1_000L) / 100L
+    return "$seconds.${tenths}s"
 }
