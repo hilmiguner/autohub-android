@@ -12,7 +12,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0-spike"
+        versionName = "0.2.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,9 +43,9 @@ android {
 }
 
 dependencies {
-    // Phase 0 deliberately stays on the stable API 36-compatible Compose line.
-    // Compose 1.12+ requires compileSdk 37, which is outside this spike baseline.
+    // Keep the API 36-compatible Compose line until API 37 is part of the project baseline.
     val composeBom = platform("androidx.compose:compose-bom:2026.02.01")
+    val media3Version = "1.11.0"
 
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.activity:activity-compose:1.12.4")
@@ -56,6 +56,9 @@ dependencies {
 
     implementation("androidx.car.app:app:1.7.0")
     implementation("androidx.car.app:app-projected:1.7.0")
+
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-session:$media3Version")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
