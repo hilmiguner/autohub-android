@@ -1,5 +1,7 @@
 package com.autohub.android.media
 
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
@@ -82,7 +84,17 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         catalog = DemoMediaCatalog(this)
-        val player = ExoPlayer.Builder(this).build()
+
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+
+        val player = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+
         mediaLibrarySession = MediaLibrarySession.Builder(this, player, libraryCallback).build()
     }
 
