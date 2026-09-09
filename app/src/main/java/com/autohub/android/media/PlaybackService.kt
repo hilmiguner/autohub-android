@@ -3,6 +3,7 @@ package com.autohub.android.media
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
@@ -78,6 +79,51 @@ class PlaybackService : MediaLibraryService() {
             }
 
             return Futures.immediateFuture(resolvedItems)
+        }
+
+        @UnstableApi
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: List<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            if (mediaItems.size == 1) {
+                val requestedIndex = catalog.indexOfPlayable(mediaItems.single().mediaId)
+                if (requestedIndex >= 0) {
+                    return Futures.immediateFuture(
+                        MediaSession.MediaItemsWithStartPosition(
+                            catalog.playableItems,
+                            requestedIndex,
+                            startPositionMs,
+                        ),
+                    )
+                }
+            }
+
+            val resolvedItems = mediaItems.map { requestedItem ->
+                catalog.resolveForPlayback(requestedItem)
+                    ?: return Futures.immediateFailedFuture(
+                        IllegalArgumentException(
+                            "Unknown or non-playable media item: ${requestedItem.mediaId}",
+                        ),
+                    )
+            }
+
+            val resolvedStartIndex = when {
+                startIndex == C.INDEX_UNSET -> C.INDEX_UNSET
+                resolvedItems.isEmpty() -> C.INDEX_UNSET
+                else -> startIndex.coerceIn(resolvedItems.indices)
+            }
+
+            return Futures.immediateFuture(
+                MediaSession.MediaItemsWithStartPosition(
+                    resolvedItems,
+                    resolvedStartIndex,
+                    startPositionMs,
+                ),
+            )
         }
     }
 
