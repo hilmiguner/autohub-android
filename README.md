@@ -20,7 +20,7 @@ Current Phase 2 scope includes:
 - file/content access disabled
 - mixed-content blocking and Safe Browsing
 - first-party cookies enabled with third-party cookies disabled
-- configuration-driven WebView current-page/history restoration
+- configuration-driven WebView current-page/history restoration (physical rotation retest pending)
 - Phase 1 media regression coverage
 
 See [`ROADMAP.md`](ROADMAP.md) for the architecture, delivery phases, technical decisions and validation status.
@@ -67,7 +67,7 @@ The Phase 1 player explicitly declares `USAGE_MEDIA` / music content and lets Ex
 
 ## Browser foundation
 
-The browser uses a classic Android View hierarchy around WebView because the initial Compose + `AndroidView(WebView)` shell rendered as a blank white activity on the physical Samsung test phone. Browser navigation is restricted to HTTP(S), and the current page/history is saved and restored across configuration-driven Activity recreation such as orientation changes. Full process-death browser restoration remains a later Phase 2 slice.
+The browser uses a classic Android View hierarchy around WebView because the initial Compose + `AndroidView(WebView)` shell rendered as a blank white activity on the physical Samsung test phone. Browser navigation is restricted to HTTP(S). The browser now saves the WebView current page/history in the Activity instance-state bundle and restores it after configuration-driven recreation such as orientation changes; this specific behavior is pending physical-device retest. Full process-death browser restoration remains a later Phase 2 slice.
 
 ## Branch policy
 
