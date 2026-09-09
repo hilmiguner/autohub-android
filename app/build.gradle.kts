@@ -11,8 +11,8 @@ android {
         applicationId = "com.autohub.android"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.2.0-dev"
+        versionCode = 2
+        versionName = "0.3.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
