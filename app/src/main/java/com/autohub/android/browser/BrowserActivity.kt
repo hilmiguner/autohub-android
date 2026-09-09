@@ -275,9 +275,8 @@ class BrowserActivity : ComponentActivity() {
         (value * resources.displayMetrics.density).toInt()
 
     companion object {
+        private const val DEFAULT_HOME_URL = "https://example.com"
         private const val KEY_WEBVIEW_STATE = "browser.webview_state"
         private const val KEY_ADDRESS = "browser.address"
     }
 }
-
-private const val DEFAULT_HOME_URL = "https://example.com"
