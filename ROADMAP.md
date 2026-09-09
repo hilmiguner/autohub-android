@@ -1,6 +1,6 @@
 # AutoHub Android — Roadmap, Technical Architecture and Delivery Plan
 
-> Status: Phase 1 — Media Foundation
+> Status: Phase 2 — Browser Foundation
 >
 > This document is the source of truth for the Android application's technical direction. It will be updated as architectural decisions are validated or changed.
 
@@ -30,7 +30,7 @@ The phone application is the full-featured client. It can host normal Android UI
 
 ### Android Auto
 
-The supported production path uses AndroidX Car App Library and Android media APIs. Phase 0 validated discovery, host connection, lifecycle and input callbacks. Phase 1 validates the standard Android Auto media-browser path using Media3.
+The supported production path uses AndroidX Car App Library and Android media APIs. Phase 0 validated discovery, host connection, lifecycle and input callbacks. Phase 1 validated the standard Android Auto media-browser path using Media3.
 
 Android Auto-specific experimental work must remain isolated from product/business logic so compatibility changes do not force a rewrite of the entire application.
 
@@ -64,13 +64,13 @@ AAOS is a later target. Parked-app video/browser capabilities can be evaluated i
 | compileSdk | 36 |
 | targetSdk | 36 |
 | minSdk | 28 |
-| Phone UI | Jetpack Compose |
+| Phone UI | Jetpack Compose + classic Android Views where platform WebView integration benefits from them |
 | Compose BOM | 2026.02.01 |
 | AndroidX Core KTX | 1.17.0 |
 | AndroidX Activity Compose | 1.12.4 |
 | Car integration | AndroidX Car App 1.7.0 + app-projected 1.7.0 |
 | Playback | Media3 1.11.0 |
-| Browser | Android WebView (planned) |
+| Browser | Android WebView |
 | Local persistence | DataStore + Room (planned) |
 | Dependency injection | Hilt (planned when module count justifies it) |
 | CI | GitHub Actions |
@@ -219,7 +219,7 @@ The Phase 0 spike used the `POI` Car App Library category strictly to validate t
 
 Goal: build the reusable playback layer before adding product content providers.
 
-### Current implementation
+### Completed implementation
 
 - [x] Media3 1.11.0 dependency baseline
 - [x] ExoPlayer owned by a service rather than the Activity
@@ -227,20 +227,24 @@ Goal: build the reusable playback layer before adding product content providers.
 - [x] foreground media-playback permissions/service declaration
 - [x] legacy/platform media browser compatibility intent
 - [x] Android Auto media-only capability declaration
-- [x] deterministic bundled offline test tone
+- [x] deterministic 10-second generated offline test tone
 - [x] phone-side `MediaController` connection
-- [x] phone play / pause / restart test controls
+- [x] phone play / pause / resume controls
 - [x] provider-independent immutable queue model
 - [x] unit tests for queue navigation semantics
-- [x] CI green for the first Phase 1 slice
+- [x] CI green across Phase 1 slices
 - [x] physical-phone playback/manual lifecycle validation
 - [x] Android system media notification validation
 - [x] Android Auto DHU media discovery/browse/play/pause validation
 - [x] DHU disconnect/reconnect recovery validation
 - [x] explicit audio-focus routing validation after `USAGE_MEDIA` + ExoPlayer-managed focus fix
 - [x] competing-media audio focus behavior validation
-- [ ] seek/next/previous queue integration
-- [ ] persistent playback state
+- [x] three-item Media3 queue integration
+- [x] seek/next/previous integration on phone and DHU
+- [x] phone/DHU queue and playback-state synchronization
+- [x] persistent queue/current-item/playback-position state
+- [x] safe paused restore after process recreation
+- [x] resume from restored playback position
 
 ### DHU validation record — 2026-09-09
 
@@ -256,8 +260,14 @@ Goal: build the reusable playback layer before adding product content providers.
 | Crash during reconnect | None |
 | Fresh-session audible output without priming another app | Pass |
 | Spotify ↔ AutoHub audio-focus handoff | Pass |
+| Three-item queue Previous / Next | Pass |
+| Seek / progress control | Pass |
+| Restored queue/current item visible | Pass |
+| Restored session controls after process recreation | Pass |
 
 The first DHU build exposed an audio-routing issue where AutoHub could enter playing state without audible output until another media app activated the audio path. The service now configures explicit `USAGE_MEDIA`, `AUDIO_CONTENT_TYPE_MUSIC`, ExoPlayer-managed audio focus, and `handleAudioBecomingNoisy=true`. Fresh-DHU playback and competing-media handoff were both retested successfully on 2026-09-09.
+
+Playback persistence stores ordered media IDs, current index, position and last playing-state metadata. Process recreation restores the queue/current item/position but intentionally does not autoplay; the next explicit Play/Resume command continues from the restored state.
 
 ### Architecture decision
 
@@ -265,25 +275,58 @@ Phase 1 uses `MediaLibraryService` instead of a plain `MediaSessionService`. Aut
 
 ExoPlayer owns audio-focus behavior. The service configures media audio attributes and enables ExoPlayer's automatic focus handling rather than maintaining a second manual `AudioManager` focus implementation.
 
+The Phase 1 persistence contract is isolated behind `PlaybackStateStore`. A small SharedPreferences-backed implementation provides synchronous service-start restoration for the current single-module phase; it can move to the planned data layer later without changing the playback-domain contract.
+
 ### Exit criterion
 
-A local/test audio source can be browsed and controlled from both the phone and supported Android Auto media controls through the same service-owned Media3 session, with expected foreground/audio-focus/lifecycle behavior.
+A local/test audio source can be browsed and controlled from both the phone and supported Android Auto media controls through the same service-owned Media3 session, with expected foreground/audio-focus/lifecycle and process-restoration behavior. **Pass.**
+
+**Phase 1 status: COMPLETE.**
 
 ## 9. Phase 2 — Browser Foundation
 
 Goal: create a robust phone-side browser module that is independent of the car adapter.
 
-Planned work:
+### Current implementation
 
-- WebView lifecycle wrapper
-- navigation history
-- cookies/session storage
-- downloads policy
-- desktop/mobile user agent modes
-- full-screen media callbacks
-- safe JavaScript bridge design
-- browser state restoration
-- allow/deny navigation hooks
+- [x] dedicated phone-only `BrowserActivity`
+- [x] native Android View hierarchy + platform WebView lifecycle wrapper
+- [x] address bar and host-like input normalization to HTTPS
+- [x] Back / Forward / Reload navigation controls
+- [x] Android system Back integrated with WebView history
+- [x] HTTP(S)-only allow/deny navigation policy
+- [x] unit tests for URL normalization and blocked schemes
+- [x] JavaScript + DOM storage baseline without a JavaScript bridge
+- [x] file/content access disabled
+- [x] mixed-content blocked and Safe Browsing enabled
+- [x] first-party cookies allowed; third-party cookies disabled by default
+- [x] browser remains excluded from Android Auto capabilities
+- [ ] WebView current page/history restoration across configuration-driven Activity recreation — implementation added, physical rotation retest pending
+- [ ] cookie/session persistence policy
+- [ ] browser state restoration after full process death
+- [ ] downloads policy
+- [ ] desktop/mobile user-agent modes
+- [ ] full-screen media callbacks
+- [ ] safe JavaScript bridge design for later provider integrations
+
+### Physical phone validation record — 2026-09-09
+
+| Item | Result |
+| --- | --- |
+| Browser activity opens | Pass |
+| Native browser chrome renders | Pass |
+| Default `https://example.com` renders | Pass |
+| HTTPS normalization | Pass |
+| Back / Forward / Reload | Pass |
+| Android Back uses WebView history first | Pass |
+| `file://` blocked | Pass |
+| `javascript:` blocked | Pass |
+| Phase 1 media regression | Pass |
+| Landscape rotation retains current page/history | Pending retest after state-restoration fix |
+
+The first browser shell used Compose + `AndroidView(WebView)` and rendered as a blank white activity on the Samsung test phone. The browser chrome was moved to a classic Android View hierarchy so controls remain independent of WebView page rendering. A second physical-device test confirmed the chrome and default page render correctly.
+
+A subsequent landscape-rotation test exposed that `BrowserActivity` was recreated and always loaded the default page. The activity now saves WebView state into the instance-state bundle and restores it after configuration-driven recreation instead of unconditionally loading `https://example.com`. This fix is pending physical rotation retest.
 
 The browser should remain a normal Android feature and only be exposed to a car target when that target/mode officially supports the required UI.
 
@@ -478,10 +521,11 @@ Rules:
 
 ## 20. Immediate Next Steps
 
-1. Add seek/next/previous queue integration.
-2. Add persistent playback state.
-3. Complete Phase 1 exit criteria and merge PR #2.
-4. Run deferred physical vehicle compatibility validation when an environment becomes available.
+1. Retest browser current-page/history restoration across orientation changes.
+2. Define cookie/session persistence policy.
+3. Add full browser process-restoration behavior.
+4. Add desktop/mobile user-agent modes and downloads policy.
+5. Run deferred physical vehicle compatibility validation when an environment becomes available.
 
 ## 21. Research References
 

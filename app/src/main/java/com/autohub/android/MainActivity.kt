@@ -1,6 +1,7 @@
 package com.autohub.android
 
 import android.content.ComponentName
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +34,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.autohub.android.browser.BrowserActivity
 import com.autohub.android.media.DemoMediaCatalog
 import com.autohub.android.media.PlaybackService
 import kotlinx.coroutines.delay
@@ -132,17 +134,26 @@ class MainActivity : ComponentActivity() {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Phase 1 · Playback Persistence",
+                            text = "Phase 2 · Browser Foundation",
                             style = MaterialTheme.typography.titleLarge,
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Queue, current item and playback position are persisted by the service and restored paused after process recreation.",
+                            text = "The first browser slice runs on the phone only. Phase 1 media controls remain available below for regression testing.",
                             style = MaterialTheme.typography.bodyLarge,
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                context.startActivity(Intent(context, BrowserActivity::class.java))
+                            },
+                        ) {
+                            Text("Open phone browser")
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = "Session: $playbackStatus",
+                            text = "Media session: $playbackStatus",
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -165,7 +176,7 @@ class MainActivity : ComponentActivity() {
                             text = if (isPlaying) "Playback: Playing" else "Playback: Not playing",
                             style = MaterialTheme.typography.bodyLarge,
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                         Button(
                             modifier = Modifier.fillMaxWidth(),
                             enabled = controller != null,
