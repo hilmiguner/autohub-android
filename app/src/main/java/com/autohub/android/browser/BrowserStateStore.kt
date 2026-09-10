@@ -11,6 +11,10 @@ interface BrowserStateStore {
 
     fun saveCurrentUrl(url: String)
 
+    fun loadUserAgentMode(): BrowserUserAgentMode
+
+    fun saveUserAgentMode(mode: BrowserUserAgentMode)
+
     fun clear()
 }
 
@@ -42,12 +46,28 @@ class SharedPreferencesBrowserStateStore(
             .commit()
     }
 
+    override fun loadUserAgentMode(): BrowserUserAgentMode =
+        BrowserUserAgentMode.fromStorage(
+            preferences.getString(KEY_USER_AGENT_MODE, null),
+        )
+
+    override fun saveUserAgentMode(mode: BrowserUserAgentMode) {
+        preferences
+            .edit()
+            .putString(KEY_USER_AGENT_MODE, mode.name)
+            .commit()
+    }
+
     override fun clear() {
-        preferences.edit().clear().commit()
+        preferences
+            .edit()
+            .remove(KEY_CURRENT_URL)
+            .commit()
     }
 
     private companion object {
         const val PREFERENCES_NAME = "autohub.browser.state"
         const val KEY_CURRENT_URL = "current_url"
+        const val KEY_USER_AGENT_MODE = "user_agent_mode"
     }
 }

@@ -26,9 +26,12 @@ class BrowserActivity : ComponentActivity() {
     private lateinit var backButton: Button
     private lateinit var forwardButton: Button
     private lateinit var reloadButton: Button
+    private lateinit var desktopModeButton: Button
     private lateinit var statusText: TextView
     private lateinit var cookieManager: CookieManager
     private lateinit var browserStateStore: BrowserStateStore
+    private lateinit var mobileUserAgent: String
+    private var userAgentMode = BrowserUserAgentMode.MOBILE
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +39,7 @@ class BrowserActivity : ComponentActivity() {
 
         browserStateStore = SharedPreferencesBrowserStateStore(this)
         cookieManager = CookieManager.getInstance()
+        userAgentMode = browserStateStore.loadUserAgentMode()
         val persistedState = if (savedInstanceState == null) {
             browserStateStore.load()
         } else {
@@ -156,6 +160,18 @@ class BrowserActivity : ComponentActivity() {
             ),
         )
 
+        desktopModeButton = Button(this).apply {
+            setOnClickListener { toggleUserAgentMode() }
+        }
+        updateUserAgentModeButton()
+        root.addView(
+            desktopModeButton,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
         val clearBrowserDataButton = Button(this).apply {
             text = "Clear browser data"
             setOnClickListener { clearBrowserData() }
@@ -177,6 +193,9 @@ class BrowserActivity : ComponentActivity() {
             settings.setSupportMultipleWindows(false)
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.safeBrowsingEnabled = true
+
+            mobileUserAgent = settings.userAgentString.orEmpty()
+            applyUserAgentMode(settings)
 
             cookieManager.setAcceptCookie(true)
             cookieManager.setAcceptThirdPartyCookies(this, false)
@@ -279,6 +298,41 @@ class BrowserActivity : ComponentActivity() {
         statusText.text = "Loading…"
         addressField.setText(normalized)
         webView.loadUrl(normalized)
+    }
+
+    private fun toggleUserAgentMode() {
+        userAgentMode = when (userAgentMode) {
+            BrowserUserAgentMode.MOBILE -> BrowserUserAgentMode.DESKTOP
+            BrowserUserAgentMode.DESKTOP -> BrowserUserAgentMode.MOBILE
+        }
+        browserStateStore.saveUserAgentMode(userAgentMode)
+        applyUserAgentMode(webView.settings)
+        updateUserAgentModeButton()
+
+        statusText.text = when (userAgentMode) {
+            BrowserUserAgentMode.MOBILE -> "Mobile mode enabled. Reloading…"
+            BrowserUserAgentMode.DESKTOP -> "Desktop mode enabled. Reloading…"
+        }
+        if (webView.url?.isNotBlank() == true) {
+            webView.reload()
+        }
+    }
+
+    private fun applyUserAgentMode(settings: WebSettings) {
+        val desktop = userAgentMode == BrowserUserAgentMode.DESKTOP
+        settings.userAgentString = BrowserUserAgentPolicy.userAgentFor(
+            mode = userAgentMode,
+            mobileUserAgent = mobileUserAgent,
+        )
+        settings.useWideViewPort = desktop
+        settings.loadWithOverviewMode = desktop
+    }
+
+    private fun updateUserAgentModeButton() {
+        desktopModeButton.text = when (userAgentMode) {
+            BrowserUserAgentMode.MOBILE -> "Desktop mode: OFF"
+            BrowserUserAgentMode.DESKTOP -> "Desktop mode: ON"
+        }
     }
 
     private fun syncNavigationState(view: WebView?) {
