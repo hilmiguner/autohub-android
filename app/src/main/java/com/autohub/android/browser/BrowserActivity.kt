@@ -9,10 +9,12 @@ import android.os.Bundle
 import android.os.Environment
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.URLUtil
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebStorage
@@ -20,12 +22,17 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class BrowserActivity : ComponentActivity() {
+    private lateinit var rootContainer: FrameLayout
+    private lateinit var browserContent: LinearLayout
     private lateinit var webView: WebView
     private lateinit var addressField: EditText
     private lateinit var backButton: Button
@@ -37,6 +44,9 @@ class BrowserActivity : ComponentActivity() {
     private lateinit var browserStateStore: BrowserStateStore
     private lateinit var mobileUserAgent: String
     private var userAgentMode = BrowserUserAgentMode.MOBILE
+    private var fullscreenView: View? = null
+    private var fullscreenContainer: FrameLayout? = null
+    private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,11 +61,22 @@ class BrowserActivity : ComponentActivity() {
             null
         }
 
-        val root = LinearLayout(this).apply {
+        rootContainer = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+        }
+
+        browserContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.WHITE)
             setPadding(dp(12), dp(12), dp(12), dp(12))
         }
+        rootContainer.addView(
+            browserContent,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
 
         val title = TextView(this).apply {
             text = "AutoHub Browser"
@@ -63,7 +84,7 @@ class BrowserActivity : ComponentActivity() {
             setTextColor(Color.BLACK)
             setPadding(0, 0, 0, dp(8))
         }
-        root.addView(
+        browserContent.addView(
             title,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -113,7 +134,7 @@ class BrowserActivity : ComponentActivity() {
                 marginStart = dp(8)
             },
         )
-        root.addView(
+        browserContent.addView(
             addressRow,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -126,7 +147,7 @@ class BrowserActivity : ComponentActivity() {
             setTextColor(Color.DKGRAY)
             setPadding(0, dp(4), 0, dp(4))
         }
-        root.addView(
+        browserContent.addView(
             statusText,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -157,7 +178,7 @@ class BrowserActivity : ComponentActivity() {
         navigationRow.addView(backButton, weightedButtonParams())
         navigationRow.addView(forwardButton, weightedButtonParams(dp(8)))
         navigationRow.addView(reloadButton, weightedButtonParams(dp(8)))
-        root.addView(
+        browserContent.addView(
             navigationRow,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -169,7 +190,7 @@ class BrowserActivity : ComponentActivity() {
             setOnClickListener { toggleUserAgentMode() }
         }
         updateUserAgentModeButton()
-        root.addView(
+        browserContent.addView(
             desktopModeButton,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -181,7 +202,7 @@ class BrowserActivity : ComponentActivity() {
             text = "Clear browser data"
             setOnClickListener { clearBrowserData() }
         }
-        root.addView(
+        browserContent.addView(
             clearBrowserDataButton,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -212,6 +233,23 @@ class BrowserActivity : ComponentActivity() {
                     contentDisposition = contentDisposition,
                     mimeType = mimeType,
                 )
+            }
+
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowCustomView(
+                    view: View?,
+                    callback: CustomViewCallback?,
+                ) {
+                    if (view == null || callback == null) {
+                        callback?.onCustomViewHidden()
+                        return
+                    }
+                    enterFullscreenMedia(view, callback)
+                }
+
+                override fun onHideCustomView() {
+                    exitFullscreenMedia()
+                }
             }
 
             webViewClient = object : WebViewClient() {
@@ -257,7 +295,7 @@ class BrowserActivity : ComponentActivity() {
                 }
             }
         }
-        root.addView(
+        browserContent.addView(
             webView,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -266,17 +304,19 @@ class BrowserActivity : ComponentActivity() {
             ),
         )
 
-        setContentView(root)
+        setContentView(rootContainer)
 
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (webView.canGoBack()) {
-                        webView.goBack()
-                    } else {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
+                    when {
+                        fullscreenView != null -> exitFullscreenMedia()
+                        webView.canGoBack() -> webView.goBack()
+                        else -> {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
                     }
                 }
             },
@@ -371,6 +411,66 @@ class BrowserActivity : ComponentActivity() {
         }
     }
 
+    private fun enterFullscreenMedia(
+        view: View,
+        callback: WebChromeClient.CustomViewCallback,
+    ) {
+        if (fullscreenView != null) {
+            callback.onCustomViewHidden()
+            return
+        }
+
+        fullscreenView = view
+        fullscreenCallback = callback
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            addView(
+                view,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    Gravity.CENTER,
+                ),
+            )
+        }
+        fullscreenContainer = container
+        browserContent.visibility = View.GONE
+        rootContainer.addView(
+            container,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        hideFullscreenSystemBars()
+    }
+
+    private fun exitFullscreenMedia() {
+        val activeView = fullscreenView ?: return
+        fullscreenContainer?.removeView(activeView)
+        fullscreenContainer?.let(rootContainer::removeView)
+        fullscreenContainer = null
+        fullscreenView = null
+        browserContent.visibility = View.VISIBLE
+        showSystemBars()
+        fullscreenCallback?.onCustomViewHidden()
+        fullscreenCallback = null
+        webView.requestFocus()
+    }
+
+    private fun hideFullscreenSystemBars() {
+        WindowInsetsControllerCompat(window, rootContainer).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    private fun showSystemBars() {
+        WindowInsetsControllerCompat(window, rootContainer)
+            .show(WindowInsetsCompat.Type.systemBars())
+    }
+
     private fun toggleUserAgentMode() {
         userAgentMode = when (userAgentMode) {
             BrowserUserAgentMode.MOBILE -> BrowserUserAgentMode.DESKTOP
@@ -434,6 +534,13 @@ class BrowserActivity : ComponentActivity() {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && fullscreenView != null) {
+            hideFullscreenSystemBars()
+        }
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         val webViewState = Bundle()
         webView.saveState(webViewState)
@@ -443,12 +550,18 @@ class BrowserActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (fullscreenView != null) {
+            exitFullscreenMedia()
+        }
         persistCurrentPage(webView.url)
         cookieManager.flush()
         super.onStop()
     }
 
     override fun onDestroy() {
+        if (fullscreenView != null) {
+            exitFullscreenMedia()
+        }
         webView.stopLoading()
         webView.webChromeClient = null
         webView.webViewClient = WebViewClient()
