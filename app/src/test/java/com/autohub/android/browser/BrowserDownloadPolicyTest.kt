@@ -30,7 +30,7 @@ class BrowserDownloadPolicyTest {
     @Test
     fun `sanitizes suggested file name`() {
         assertEquals(
-            "unsafe_name___.pdf",
+            "unsafe_name__.pdf",
             BrowserDownloadPolicy.sanitizeFileName("unsafe/name?:.pdf"),
         )
     }
