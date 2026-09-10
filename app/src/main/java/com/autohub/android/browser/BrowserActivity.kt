@@ -1,13 +1,18 @@
 package com.autohub.android.browser
 
 import android.annotation.SuppressLint
+import android.app.DownloadManager
 import android.graphics.Color
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
+import android.webkit.URLUtil
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebStorage
@@ -200,6 +205,15 @@ class BrowserActivity : ComponentActivity() {
             cookieManager.setAcceptCookie(true)
             cookieManager.setAcceptThirdPartyCookies(this, false)
 
+            setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+                enqueueDownload(
+                    url = url,
+                    userAgent = userAgent,
+                    contentDisposition = contentDisposition,
+                    mimeType = mimeType,
+                )
+            }
+
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
@@ -298,6 +312,63 @@ class BrowserActivity : ComponentActivity() {
         statusText.text = "Loading…"
         addressField.setText(normalized)
         webView.loadUrl(normalized)
+    }
+
+    private fun enqueueDownload(
+        url: String?,
+        userAgent: String?,
+        contentDisposition: String?,
+        mimeType: String?,
+    ) {
+        val trimmedUrl = url?.trim()
+        val suggestedFileName = trimmedUrl?.let {
+            URLUtil.guessFileName(it, contentDisposition, mimeType)
+        }
+        val spec = BrowserDownloadPolicy.create(
+            url = trimmedUrl,
+            suggestedFileName = suggestedFileName,
+            mimeType = mimeType,
+        )
+        if (spec == null) {
+            statusText.text = "Blocked unsupported download URL."
+            return
+        }
+
+        val request = DownloadManager.Request(Uri.parse(spec.url))
+            .setTitle(spec.fileName)
+            .setDescription("AutoHub Browser download")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(false)
+
+        spec.mimeType?.let(request::setMimeType)
+        userAgent
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { request.addRequestHeader("User-Agent", it) }
+        cookieManager
+            .getCookie(spec.url)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { request.addRequestHeader("Cookie", it) }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, spec.fileName)
+        } else {
+            request.setDestinationInExternalFilesDir(
+                this,
+                Environment.DIRECTORY_DOWNLOADS,
+                spec.fileName,
+            )
+        }
+
+        runCatching {
+            getSystemService(DownloadManager::class.java).enqueue(request)
+        }.onSuccess {
+            statusText.text = "Download queued: ${spec.fileName}"
+        }.onFailure {
+            statusText.text = "Could not start download."
+        }
     }
 
     private fun toggleUserAgentMode() {
